@@ -69,7 +69,8 @@ The production build will be created in the `dist/` directory.
 
 ## Configuration Format
 
-Guitar configurations are exported as JSON files with the following structure:
+Guitar configurations are exported as JSON files with the following structure.
+See `example-config.json` for a complete example.
 
 ```json
 {
