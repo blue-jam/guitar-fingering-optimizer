@@ -3,14 +3,14 @@
 export interface StringConfig {
   tuning: number; // MIDI note number
   fretDistances: number[]; // Distance in mm for each fret
-  difficulty: number[]; // Difficulty value for each fret (0-1)
 }
 
 export interface GuitarConfig {
   fretCount: number; // 19-24
   stringCount: number;
   strings: StringConfig[];
-  fingerSpan: number; // Maximum finger span in mm
+  difficulty: number[][]; // Difficulty value in mm for each string and fret (added to fretDistances)
+  fingerSpan: number[]; // Finger span in mm: [index-middle, middle-ring, ring-pinky]
 }
 
 export interface OptimizationSettings {

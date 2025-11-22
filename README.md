@@ -80,14 +80,20 @@ See `example-config.json` for a complete example.
     "strings": [
       {
         "tuning": 40,
-        "fretDistances": [650, 613.5, ...],
-        "difficulty": [0.1, 0.14, ...]
+        "fretDistances": [650, 613.5, ...]
       }
     ],
-    "fingerSpan": 100
+    "difficulty": [
+      [0, 0.2, 0.5, ...],
+      [0, 0.2, 0.5, ...]
+    ],
+    "fingerSpan": [30, 30, 30]
   }
 }
 ```
+
+- `difficulty`: 2D array (per string, per fret) of difficulty penalties in millimeters, added to fretDistances
+- `fingerSpan`: Array of 3 values representing finger spans in mm: [index-middle, middle-ring, ring-pinky]
 
 ## Optimization Algorithm
 

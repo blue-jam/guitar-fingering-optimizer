@@ -12,14 +12,15 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
     const newStrings = config.strings.map(string => ({
       ...string,
       fretDistances: string.fretDistances.slice(0, fretCount),
-      difficulty: string.difficulty.slice(0, fretCount),
     }));
-    onChange({ ...config, fretCount, strings: newStrings });
+    const newDifficulty = config.difficulty.map(stringDiff => stringDiff.slice(0, fretCount));
+    onChange({ ...config, fretCount, strings: newStrings, difficulty: newDifficulty });
   };
 
   const handleStringCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const stringCount = parseInt(e.target.value);
     const newStrings = [...config.strings];
+    const newDifficulty = [...config.difficulty];
     
     // Add or remove strings as needed
     while (newStrings.length < stringCount) {
@@ -28,19 +29,23 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
       newStrings.push({
         tuning: lastString ? lastString.tuning - 5 : 40,
         fretDistances: lastString ? [...lastString.fretDistances] : Array(config.fretCount).fill(30),
-        difficulty: lastString ? [...lastString.difficulty] : Array(config.fretCount).fill(0.5),
       });
+      // Add default difficulty for new string
+      newDifficulty.push(Array(config.fretCount).fill(2));
     }
     
     while (newStrings.length > stringCount) {
       newStrings.pop();
+      newDifficulty.pop();
     }
     
-    onChange({ ...config, stringCount, strings: newStrings });
+    onChange({ ...config, stringCount, strings: newStrings, difficulty: newDifficulty });
   };
 
-  const handleFingerSpanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange({ ...config, fingerSpan: parseFloat(e.target.value) });
+  const handleFingerSpanChange = (index: number, value: number) => {
+    const newFingerSpan = [...config.fingerSpan];
+    newFingerSpan[index] = value;
+    onChange({ ...config, fingerSpan: newFingerSpan });
   };
 
   const handleTuningChange = (stringIndex: number, value: number) => {
@@ -58,11 +63,12 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
   };
 
   const handleDifficultyChange = (stringIndex: number, fretIndex: number, value: number) => {
-    const newStrings = [...config.strings];
-    const newDifficulty = [...newStrings[stringIndex].difficulty];
-    newDifficulty[fretIndex] = value;
-    newStrings[stringIndex] = { ...newStrings[stringIndex], difficulty: newDifficulty };
-    onChange({ ...config, strings: newStrings });
+    const newDifficulty = config.difficulty.map((stringDiff, idx) =>
+      idx === stringIndex
+        ? stringDiff.map((diff, fIdx) => (fIdx === fretIndex ? value : diff))
+        : stringDiff
+    );
+    onChange({ ...config, difficulty: newDifficulty });
   };
 
   const copyFretDistances = (sourceStringIndex: number) => {
@@ -103,15 +109,38 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
       </div>
 
       <div className="config-section">
+        <h3>Finger Span (mm)</h3>
         <label>
-          Finger Span (mm):
+          Index to Middle Finger:
           <input
             type="number"
-            min="50"
-            max="200"
-            step="5"
-            value={config.fingerSpan}
-            onChange={handleFingerSpanChange}
+            min="10"
+            max="100"
+            step="1"
+            value={config.fingerSpan[0]}
+            onChange={(e) => handleFingerSpanChange(0, parseFloat(e.target.value))}
+          />
+        </label>
+        <label>
+          Middle to Ring Finger:
+          <input
+            type="number"
+            min="10"
+            max="100"
+            step="1"
+            value={config.fingerSpan[1]}
+            onChange={(e) => handleFingerSpanChange(1, parseFloat(e.target.value))}
+          />
+        </label>
+        <label>
+          Ring to Pinky Finger:
+          <input
+            type="number"
+            min="10"
+            max="100"
+            step="1"
+            value={config.fingerSpan[2]}
+            onChange={(e) => handleFingerSpanChange(2, parseFloat(e.target.value))}
           />
         </label>
       </div>
@@ -156,17 +185,17 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
             </details>
 
             <details>
-              <summary>Fret Difficulty (0-1)</summary>
+              <summary>Fret Difficulty (mm penalty)</summary>
               <div className="fret-difficulty">
-                {string.difficulty.map((diff, fretIndex) => (
+                {config.difficulty[stringIndex]?.map((diff, fretIndex) => (
                   <label key={fretIndex}>
                     Fret {fretIndex + 1}:
                     <input
                       type="number"
                       min="0"
-                      max="1"
-                      step="0.05"
-                      value={diff.toFixed(2)}
+                      max="20"
+                      step="0.1"
+                      value={diff.toFixed(1)}
                       onChange={(e) => handleDifficultyChange(stringIndex, fretIndex, parseFloat(e.target.value))}
                     />
                   </label>
