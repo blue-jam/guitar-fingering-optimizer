@@ -19,14 +19,12 @@ export const createDefaultGuitarConfig = (): GuitarConfig => {
     fretDistances: [...defaultFretDistances],
   }));
   
-  // Default difficulty values in mm (increases with fret number for each string)
+  // Default difficulty values in mm (per string)
   // These values are added to fretDistances to account for difficulty
-  const difficulty = Array.from({ length: stringCount }, () =>
-    Array.from({ length: fretCount }, (_, i) => {
-      // Higher frets are more difficult, add 0-5mm difficulty penalty
-      return Math.min(5, (i / fretCount) * 5);
-    })
-  );
+  const difficulty = Array.from({ length: stringCount }, (_, i) => {
+    // Lower strings (thicker) have slightly higher difficulty
+    return 1 + (i * 0.5);
+  });
   
   return {
     fretCount,

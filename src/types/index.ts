@@ -9,7 +9,7 @@ export interface GuitarConfig {
   fretCount: number; // 19-24
   stringCount: number;
   strings: StringConfig[];
-  difficulty: number[][]; // Difficulty value in mm for each string and fret (added to fretDistances)
+  difficulty: number[]; // Difficulty value in mm for each string (added to fretDistances)
   fingerSpan: number[]; // Finger span in mm: [index-middle, middle-ring, ring-pinky]
 }
 

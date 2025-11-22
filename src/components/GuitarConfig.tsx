@@ -13,8 +13,7 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
       ...string,
       fretDistances: string.fretDistances.slice(0, fretCount),
     }));
-    const newDifficulty = config.difficulty.map(stringDiff => stringDiff.slice(0, fretCount));
-    onChange({ ...config, fretCount, strings: newStrings, difficulty: newDifficulty });
+    onChange({ ...config, fretCount, strings: newStrings });
   };
 
   const handleStringCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,8 +29,8 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
         tuning: lastString ? lastString.tuning - 5 : 40,
         fretDistances: lastString ? [...lastString.fretDistances] : Array(config.fretCount).fill(30),
       });
-      // Add default difficulty for new string
-      newDifficulty.push(Array(config.fretCount).fill(2));
+      // Add default difficulty for new string (per string value)
+      newDifficulty.push(2);
     }
     
     while (newStrings.length > stringCount) {
@@ -62,12 +61,9 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
     onChange({ ...config, strings: newStrings });
   };
 
-  const handleDifficultyChange = (stringIndex: number, fretIndex: number, value: number) => {
-    const newDifficulty = config.difficulty.map((stringDiff, idx) =>
-      idx === stringIndex
-        ? stringDiff.map((diff, fIdx) => (fIdx === fretIndex ? value : diff))
-        : stringDiff
-    );
+  const handleDifficultyChange = (stringIndex: number, value: number) => {
+    const newDifficulty = [...config.difficulty];
+    newDifficulty[stringIndex] = value;
     onChange({ ...config, difficulty: newDifficulty });
   };
 
@@ -184,24 +180,17 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
               </div>
             </details>
 
-            <details>
-              <summary>Fret Difficulty (mm penalty)</summary>
-              <div className="fret-difficulty">
-                {config.difficulty[stringIndex]?.map((diff, fretIndex) => (
-                  <label key={fretIndex}>
-                    Fret {fretIndex + 1}:
-                    <input
-                      type="number"
-                      min="0"
-                      max="20"
-                      step="0.1"
-                      value={diff.toFixed(1)}
-                      onChange={(e) => handleDifficultyChange(stringIndex, fretIndex, parseFloat(e.target.value))}
-                    />
-                  </label>
-                ))}
-              </div>
-            </details>
+            <label>
+              Difficulty (mm penalty):
+              <input
+                type="number"
+                min="0"
+                max="20"
+                step="0.1"
+                value={config.difficulty[stringIndex]?.toFixed(1) || '0.0'}
+                onChange={(e) => handleDifficultyChange(stringIndex, parseFloat(e.target.value))}
+              />
+            </label>
           </div>
         ))}
       </div>
