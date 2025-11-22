@@ -17,6 +17,7 @@ export const midiToMusicXml = (midi: Midi, trackIndex: number): string => {
   const notesXml = notes.map((note) => {
     const pitch = noteToPitch(note.midi);
     const duration = Math.round(note.duration * divisions * 2); // Convert to divisions
+    const noteType = getNoteType(note.duration);
     
     return `
       <note>
@@ -26,7 +27,7 @@ export const midiToMusicXml = (midi: Midi, trackIndex: number): string => {
           <octave>${pitch.octave}</octave>
         </pitch>
         <duration>${duration}</duration>
-        <type>quarter</type>
+        <type>${noteType}</type>
       </note>`;
   }).join('\n');
 
@@ -96,16 +97,45 @@ interface Pitch {
   octave: number;
 }
 
+/**
+ * Determine note type based on duration in seconds
+ * Assumes 120 BPM (0.5 seconds per beat) as default
+ */
+const getNoteType = (durationSeconds: number): string => {
+  const beatDuration = 0.5; // seconds per quarter note at 120 BPM
+  const ratio = durationSeconds / beatDuration;
+  
+  if (ratio >= 3.5) return 'whole';
+  if (ratio >= 1.5) return 'half';
+  if (ratio >= 0.75) return 'quarter';
+  if (ratio >= 0.375) return 'eighth';
+  if (ratio >= 0.1875) return '16th';
+  return '32nd';
+};
+
 const noteToPitch = (midi: number): Pitch => {
-  const noteNames = ['C', 'C', 'D', 'D', 'E', 'F', 'F', 'G', 'G', 'A', 'A', 'B'];
-  const alterations = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
+  // Map MIDI notes to note names and alterations (sharps)
+  const noteInfo = [
+    { step: 'C', alter: 0 },  // C
+    { step: 'C', alter: 1 },  // C#
+    { step: 'D', alter: 0 },  // D
+    { step: 'D', alter: 1 },  // D# (Eb)
+    { step: 'E', alter: 0 },  // E
+    { step: 'F', alter: 0 },  // F
+    { step: 'F', alter: 1 },  // F#
+    { step: 'G', alter: 0 },  // G
+    { step: 'G', alter: 1 },  // G#
+    { step: 'A', alter: 0 },  // A
+    { step: 'A', alter: 1 },  // A# (Bb)
+    { step: 'B', alter: 0 },  // B
+  ];
   
   const octave = Math.floor(midi / 12) - 1;
   const noteIndex = midi % 12;
   
   return {
-    step: noteNames[noteIndex],
-    alter: alterations[noteIndex],
+    step: noteInfo[noteIndex].step,
+    alter: noteInfo[noteIndex].alter,
     octave,
   };
 };
