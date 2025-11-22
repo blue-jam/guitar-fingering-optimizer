@@ -1,0 +1,208 @@
+.app {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background-color: #1a1a1a;
+  padding: 1.5rem;
+  border-bottom: 1px solid #333;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+header p {
+  margin: 0.5rem 0 0 0;
+  color: #888;
+}
+
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 300px 1fr 350px;
+  gap: 1rem;
+  padding: 1rem;
+  max-width: 1800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.left-panel, .center-panel, .right-panel {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-y: auto;
+  max-height: calc(100vh - 140px);
+}
+
+.midi-uploader, .guitar-config, .config-exporter, .sheet-music-display {
+  margin-bottom: 1.5rem;
+}
+
+.midi-uploader h2, .guitar-config h2, .config-exporter h2, .sheet-music-display h2 {
+  margin-top: 0;
+  font-size: 1.3rem;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.5rem;
+}
+
+.config-section {
+  margin-bottom: 1rem;
+}
+
+.config-section label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+input, select, button {
+  padding: 0.5rem;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background-color: #2a2a2a;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: #646cff;
+}
+
+button {
+  cursor: pointer;
+  background-color: #646cff;
+  border: none;
+  transition: background-color 0.2s;
+}
+
+button:hover:not(:disabled) {
+  background-color: #535bf2;
+}
+
+button:disabled {
+  background-color: #444;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.optimize-button {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.error {
+  color: #ff6b6b;
+  padding: 0.5rem;
+  background-color: #2a1a1a;
+  border-radius: 4px;
+  border: 1px solid #ff6b6b;
+}
+
+.strings-config {
+  margin-top: 1rem;
+}
+
+.string-config {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #242424;
+  border-radius: 4px;
+}
+
+.string-config h4 {
+  margin-top: 0;
+  color: #646cff;
+}
+
+details {
+  margin-top: 0.5rem;
+}
+
+summary {
+  cursor: pointer;
+  padding: 0.5rem;
+  background-color: #2a2a2a;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+summary:hover {
+  background-color: #333;
+}
+
+.fret-distances, .fret-difficulty {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.fret-distances label, .fret-difficulty label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+}
+
+.sheet-music-container {
+  min-height: 400px;
+  background-color: #fff;
+  color: #000;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.optimization-results {
+  padding: 1rem;
+  background-color: #1a2a1a;
+  border: 1px solid #2a4a2a;
+  border-radius: 4px;
+}
+
+.optimization-results h3 {
+  margin-top: 0;
+  color: #4ade80;
+}
+
+.midi-info {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background-color: #242424;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.midi-info p {
+  margin: 0.3rem 0;
+}
+
+.file-input input[type="file"] {
+  display: block;
+  margin-top: 0.3rem;
+}
+
+.import-section, .export-section {
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 1200px) {
+  main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  
+  .left-panel, .center-panel, .right-panel {
+    max-height: none;
+  }
+}
