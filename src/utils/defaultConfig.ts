@@ -13,24 +13,28 @@ export const createDefaultGuitarConfig = (): GuitarConfig => {
     // Fret distances decrease logarithmically
     return 650 / Math.pow(2, i / 12);
   });
-  
+
+  // Default difficulty values in mm (per fret)
+  // These values are added to fretDistances to account for difficulty
+  const defaultDifficulty = Array.from({ length: fretCount }, (_, i) => {
+    // Higher frets have slightly higher difficulty
+    return 1 + (i * 0.05);
+  });
+
   const strings = standardTuning.map(tuning => ({
     tuning,
     fretDistances: [...defaultFretDistances],
+    difficulty: [...defaultDifficulty],
   }));
   
-  // Default difficulty values in mm (per string)
-  // These values are added to fretDistances to account for difficulty
-  const difficulty = Array.from({ length: stringCount }, (_, i) => {
-    // Lower strings (thicker) have slightly higher difficulty
-    return 1 + (i * 0.5);
-  });
-  
+  // Default string spacing (approximate, in mm) - distance between adjacent strings
+  const stringSpacings = Array.from({ length: stringCount - 1 }, () => 10);
+
   return {
     fretCount,
     stringCount,
     strings,
-    difficulty,
-    fingerSpan: [30, 30, 30], // Default finger spans in mm: [index-middle, middle-ring, ring-pinky]
+    fingerSpans: [30, 30, 30], // Default finger spans in mm: [index-middle, middle-ring, ring-pinky]
+    stringSpacings,
   };
 };
