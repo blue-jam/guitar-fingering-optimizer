@@ -36,16 +36,21 @@ function App() {
 
   const handleOptimize = () => {
     if (!midi) return;
-    
+
     setIsOptimizing(true);
-    
+
     // Get notes from selected track
     const notes = getTrackNotes(midi, selectedTrack);
-    
+
     // Perform optimization (runs in the frontend)
     setTimeout(() => {
       const optimized = optimizeFingering(notes, settings.guitarConfig);
       setOptimizedNotes(optimized);
+
+      // Regenerate MusicXML with fingering annotations
+      const xmlWithFingering = midiToMusicXml(midi, selectedTrack, optimized);
+      setMusicXml(xmlWithFingering);
+
       setIsOptimizing(false);
     }, 100);
   };

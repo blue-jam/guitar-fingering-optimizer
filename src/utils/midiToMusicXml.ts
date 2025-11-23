@@ -1,10 +1,15 @@
 import { Midi } from '@tonejs/midi';
+import type { OptimizedNote } from '../types';
 
 /**
- * Convert MIDI to MusicXML format
+ * Convert MIDI to MusicXML format with optional fingering annotations
  * This is a simplified conversion for basic note display
  */
-export const midiToMusicXml = (midi: Midi, trackIndex: number): string => {
+export const midiToMusicXml = (
+  midi: Midi,
+  trackIndex: number,
+  optimizedNotes?: OptimizedNote[]
+): string => {
   const track = midi.tracks[trackIndex];
   if (!track || track.notes.length === 0) {
     return createEmptyMusicXml();
@@ -61,12 +66,30 @@ export const midiToMusicXml = (midi: Midi, trackIndex: number): string => {
     measures.push([]);
   }
 
+  // Create a map from note time to fingering information
+  const fingeringMap = new Map<number, { string: number; fret: number; finger: number }>();
+  if (optimizedNotes) {
+    optimizedNotes.forEach((optNote) => {
+      if (optNote.fingering) {
+        // Use time as key (rounded to avoid floating point issues)
+        const timeKey = Math.round(optNote.time * 1000);
+        fingeringMap.set(timeKey, optNote.fingering);
+      }
+    });
+  }
+
   // Generate MusicXML for each measure
   const measuresXml = measures.map((measureNotes, index) => {
     const measureNumber = index + 1;
     const isFirstMeasure = measureNumber === 1;
 
-    const notesXml = measureNotes.map((note) => `
+    const notesXml = measureNotes.flatMap((note) => {
+      // Find fingering for this note based on time
+      const timeKey = Math.round(note.time / (divisions * 2) * 1000);
+      const fingering = fingeringMap.get(timeKey);
+
+      // Standard notation (staff 1)
+      const standardNote = `
       <note>
         <pitch>
           <step>${note.pitch.step}</step>
@@ -75,7 +98,51 @@ export const midiToMusicXml = (midi: Midi, trackIndex: number): string => {
         </pitch>
         <duration>${note.duration}</duration>
         <type>${note.noteType}</type>
-      </note>`).join('\n');
+        <staff>1</staff>${
+          fingering
+            ? `
+        <notations>
+          <articulations>
+            <fingering placement="above">${fingering.finger === 0 ? 'T' : fingering.finger}</fingering>
+          </articulations>
+        </notations>`
+            : ''
+        }
+      </note>`;
+
+      // TAB notation (staff 2)
+      const tabNote = fingering
+        ? `
+      <note>
+        <pitch>
+          <step>${note.pitch.step}</step>
+          ${note.pitch.alter !== 0 ? `<alter>${note.pitch.alter}</alter>` : ''}
+          <octave>${note.pitch.octave}</octave>
+        </pitch>
+        <duration>${note.duration}</duration>
+        <type>${note.noteType}</type>
+        <staff>2</staff>
+        <notations>
+          <technical>
+            <string>${fingering.string + 1}</string>
+            <fret>${fingering.fret}</fret>
+          </technical>
+        </notations>
+      </note>`
+        : `
+      <note>
+        <pitch>
+          <step>${note.pitch.step}</step>
+          ${note.pitch.alter !== 0 ? `<alter>${note.pitch.alter}</alter>` : ''}
+          <octave>${note.pitch.octave}</octave>
+        </pitch>
+        <duration>${note.duration}</duration>
+        <type>${note.noteType}</type>
+        <staff>2</staff>
+      </note>`;
+
+      return [standardNote, tabNote];
+    }).join('\n');
 
     return `
     <measure number="${measureNumber}">
@@ -88,13 +155,25 @@ export const midiToMusicXml = (midi: Midi, trackIndex: number): string => {
           <beats>4</beats>
           <beat-type>4</beat-type>
         </time>
-        <clef>
+        <staves>2</staves>
+        <clef number="1">
           <sign>G</sign>
           <line>2</line>
         </clef>
+        <clef number="2">
+          <sign>TAB</sign>
+          <line>5</line>
+        </clef>
+        <staff-details number="2">
+          <staff-lines>6</staff-lines>
+        </staff-details>
       </attributes>` : ''}
       <print new-system="yes"/>
-      ${notesXml || '<note><rest/><duration>' + measureDuration + '</duration><type>whole</type></note>'}
+      ${
+        notesXml ||
+        `<note><rest/><duration>${measureDuration}</duration><type>whole</type><staff>1</staff></note>
+      <note><rest/><duration>${measureDuration}</duration><type>whole</type><staff>2</staff></note>`
+      }
     </measure>`;
   }).join('\n');
 
@@ -103,7 +182,8 @@ export const midiToMusicXml = (midi: Midi, trackIndex: number): string => {
 <score-partwise version="3.1">
   <part-list>
     <score-part id="P1">
-      <part-name>${track.name || 'Guitar'}</part-name>
+      <part-name>Guitar</part-name>
+      <part-abbreviation>Gtr.</part-abbreviation>
     </score-part>
   </part-list>
   <part id="P1">
