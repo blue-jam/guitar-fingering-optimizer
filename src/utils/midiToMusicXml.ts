@@ -41,7 +41,6 @@ export const midiToMusicXml = (
   // Group notes by measure
   const measures: MeasureNote[][] = [];
   let currentMeasure: MeasureNote[] = [];
-  let currentMeasureStartTime = 0;
 
   processedNotes.forEach((note) => {
     const measureNumber = Math.floor(note.time / measureDuration);
@@ -53,7 +52,6 @@ export const midiToMusicXml = (
         measures.push([]); // Empty measure
       }
       currentMeasure = [];
-      currentMeasureStartTime = measures.length * measureDuration;
     }
 
     if (measures.length === measureNumber) {
@@ -87,13 +85,13 @@ export const midiToMusicXml = (
     const measureNumber = index + 1;
     const isFirstMeasure = measureNumber === 1;
 
-    const notesXml = measureNotes.flatMap((note) => {
-      // Find fingering for this note based on time
+    // Generate pairs of notes: staff 1 (standard) followed immediately by staff 2 (TAB)
+    const notesXml = measureNotes.map((note) => {
       const timeKey = Math.round(note.time / (divisions * 2) * 1000);
       const fingering = fingeringMap.get(timeKey);
 
       // Standard notation (staff 1)
-      const standardNote = `
+      const staff1Note = `
       <note>
         <pitch>
           <step>${note.pitch.step}</step>
@@ -101,6 +99,7 @@ export const midiToMusicXml = (
           <octave>${note.pitch.octave}</octave>
         </pitch>
         <duration>${note.duration}</duration>
+        <voice>1</voice>
         <type>${note.noteType}</type>
         <staff>1</staff>${
           fingering
@@ -115,7 +114,7 @@ export const midiToMusicXml = (
       </note>`;
 
       // TAB notation (staff 2)
-      const tabNote = fingering
+      const staff2Note = fingering
         ? `
       <note>
         <pitch>
@@ -124,6 +123,7 @@ export const midiToMusicXml = (
           <octave>${note.pitch.octave}</octave>
         </pitch>
         <duration>${note.duration}</duration>
+        <voice>2</voice>
         <type>${note.noteType}</type>
         <staff>2</staff>
         <notations>
@@ -141,11 +141,12 @@ export const midiToMusicXml = (
           <octave>${note.pitch.octave}</octave>
         </pitch>
         <duration>${note.duration}</duration>
+        <voice>2</voice>
         <type>${note.noteType}</type>
         <staff>2</staff>
       </note>`;
 
-      return [standardNote, tabNote];
+      return staff1Note + '\n' + staff2Note;
     }).join('\n');
 
     return `
