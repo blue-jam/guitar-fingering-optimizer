@@ -6,6 +6,14 @@ interface GuitarConfigProps {
   onChange: (config: GuitarConfig) => void;
 }
 
+// Convert MIDI note number to note name (e.g., 64 -> E4)
+const midiToNoteName = (midiNote: number): string => {
+  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const octave = Math.floor(midiNote / 12) - 1;
+  const noteName = noteNames[midiNote % 12];
+  return `${noteName}${octave}`;
+};
+
 const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }) => {
   const handleFretCountChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const fretCount = parseInt(e.target.value);
@@ -175,63 +183,66 @@ const GuitarConfigComponent: React.FC<GuitarConfigProps> = ({ config, onChange }
 
       <div className="strings-config">
         <h3>String Configuration</h3>
-        {config.strings.map((string, stringIndex) => (
-          <div key={stringIndex} className="string-config">
-            <h4>String {stringIndex + 1}</h4>
-            
-            <label>
-              Tuning (MIDI Note):
-              <input
-                type="number"
-                min="0"
-                max="127"
-                value={string.tuning}
-                onChange={(e) => handleTuningChange(stringIndex, parseInt(e.target.value))}
-              />
-            </label>
+        {[...config.strings].reverse().map((string, reverseIndex) => {
+          const stringIndex = config.strings.length - 1 - reverseIndex;
+          return (
+            <div key={stringIndex} className="string-config">
+              <h4>String {reverseIndex + 1}</h4>
 
-            <details>
-              <summary>Fret Distances (mm)</summary>
-              <button onClick={() => copyFretDistances(stringIndex)}>
-                Copy to All Strings
-              </button>
-              <div className="fret-distances">
-                {string.fretDistances.map((distance, fretIndex) => (
-                  <label key={fretIndex}>
-                    Fret {fretIndex + 1}:
-                    <input
-                      type="number"
-                      min="10"
-                      max="100"
-                      step="0.1"
-                      value={distance.toFixed(1)}
-                      onChange={(e) => handleFretDistanceChange(stringIndex, fretIndex, parseFloat(e.target.value))}
-                    />
-                  </label>
-                ))}
-              </div>
-            </details>
+              <label>
+                Tuning (MIDI Note): {midiToNoteName(string.tuning)}
+                <input
+                  type="number"
+                  min="0"
+                  max="127"
+                  value={string.tuning}
+                  onChange={(e) => handleTuningChange(stringIndex, parseInt(e.target.value))}
+                />
+              </label>
 
-            <details>
-              <summary>Difficulty (mm penalty per fret)</summary>
-              <div className="fret-difficulty">
-                {string.difficulty.map((difficulty, fretIndex) => (
-                  <label key={fretIndex}>
-                    Fret {fretIndex + 1}:
-                    <input
-                      type="number"
-                      min="0"
-                      max="20"
-                      step="0.1"
-                      value={difficulty.toFixed(1)}
-                      onChange={(e) => handleDifficultyChange(stringIndex, fretIndex, parseFloat(e.target.value))}
-                    />
-                  </label>
-                ))}
-              </div>
-            </details>
-          </div>
-        ))}
+              <details>
+                <summary>Fret Distances (mm)</summary>
+                <button onClick={() => copyFretDistances(stringIndex)}>
+                  Copy to All Strings
+                </button>
+                <div className="fret-distances">
+                  {string.fretDistances.map((distance, fretIndex) => (
+                    <label key={fretIndex}>
+                      Fret {fretIndex + 1}:
+                      <input
+                        type="number"
+                        min="10"
+                        max="100"
+                        step="0.1"
+                        value={distance.toFixed(1)}
+                        onChange={(e) => handleFretDistanceChange(stringIndex, fretIndex, parseFloat(e.target.value))}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </details>
+
+              <details>
+                <summary>Difficulty (mm penalty per fret)</summary>
+                <div className="fret-difficulty">
+                  {string.difficulty.map((difficulty, fretIndex) => (
+                    <label key={fretIndex}>
+                      Fret {fretIndex + 1}:
+                      <input
+                        type="number"
+                        min="0"
+                        max="20"
+                        step="0.1"
+                        value={difficulty.toFixed(1)}
+                        onChange={(e) => handleDifficultyChange(stringIndex, fretIndex, parseFloat(e.target.value))}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </details>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
