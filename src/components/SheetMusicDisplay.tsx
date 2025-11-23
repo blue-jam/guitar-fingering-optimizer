@@ -18,6 +18,7 @@ const SheetMusicDisplay: React.FC<SheetMusicDisplayProps> = ({ musicXml }) => {
         autoResize: true,
         backend: 'svg',
         drawTitle: true,
+        drawingParameters: 'compacttight',
       });
     }
 

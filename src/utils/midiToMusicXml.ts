@@ -12,36 +12,74 @@ export const midiToMusicXml = (midi: Midi, trackIndex: number): string => {
 
   const notes = track.notes;
   const divisions = 480; // Standard MIDI divisions per quarter note
+  const measureDuration = divisions * 4; // 4 beats per measure in 4/4 time
 
-  // Group notes by time to create measures
-  const notesXml = notes.map((note) => {
-    const pitch = noteToPitch(note.midi);
-    const duration = Math.round(note.duration * divisions * 2); // Convert to divisions
-    const noteType = getNoteType(note.duration);
-    
-    return `
+  // Group notes into measures based on their timing
+  interface MeasureNote {
+    pitch: Pitch;
+    duration: number;
+    noteType: string;
+    time: number;
+  }
+
+  const processedNotes: MeasureNote[] = notes.map((note) => ({
+    pitch: noteToPitch(note.midi),
+    duration: Math.round(note.duration * divisions * 2),
+    noteType: getNoteType(note.duration),
+    time: note.time * divisions * 2,
+  }));
+
+  // Group notes by measure
+  const measures: MeasureNote[][] = [];
+  let currentMeasure: MeasureNote[] = [];
+  let currentMeasureStartTime = 0;
+
+  processedNotes.forEach((note) => {
+    const measureNumber = Math.floor(note.time / measureDuration);
+
+    while (measures.length < measureNumber) {
+      if (currentMeasure.length > 0) {
+        measures.push(currentMeasure);
+      } else {
+        measures.push([]); // Empty measure
+      }
+      currentMeasure = [];
+      currentMeasureStartTime = measures.length * measureDuration;
+    }
+
+    if (measures.length === measureNumber) {
+      currentMeasure.push(note);
+    }
+  });
+
+  if (currentMeasure.length > 0) {
+    measures.push(currentMeasure);
+  }
+
+  // Ensure at least one measure exists
+  if (measures.length === 0) {
+    measures.push([]);
+  }
+
+  // Generate MusicXML for each measure
+  const measuresXml = measures.map((measureNotes, index) => {
+    const measureNumber = index + 1;
+    const isFirstMeasure = measureNumber === 1;
+
+    const notesXml = measureNotes.map((note) => `
       <note>
         <pitch>
-          <step>${pitch.step}</step>
-          ${pitch.alter !== 0 ? `<alter>${pitch.alter}</alter>` : ''}
-          <octave>${pitch.octave}</octave>
+          <step>${note.pitch.step}</step>
+          ${note.pitch.alter !== 0 ? `<alter>${note.pitch.alter}</alter>` : ''}
+          <octave>${note.pitch.octave}</octave>
         </pitch>
-        <duration>${duration}</duration>
-        <type>${noteType}</type>
-      </note>`;
-  }).join('\n');
+        <duration>${note.duration}</duration>
+        <type>${note.noteType}</type>
+      </note>`).join('\n');
 
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
-<score-partwise version="3.1">
-  <part-list>
-    <score-part id="P1">
-      <part-name>${track.name || 'Guitar'}</part-name>
-    </score-part>
-  </part-list>
-  <part id="P1">
-    <measure number="1">
-      <attributes>
+    return `
+    <measure number="${measureNumber}">
+      ${isFirstMeasure ? `<attributes>
         <divisions>${divisions}</divisions>
         <key>
           <fifths>0</fifths>
@@ -54,9 +92,22 @@ export const midiToMusicXml = (midi: Midi, trackIndex: number): string => {
           <sign>G</sign>
           <line>2</line>
         </clef>
-      </attributes>
-      ${notesXml}
-    </measure>
+      </attributes>` : ''}
+      <print new-system="yes"/>
+      ${notesXml || '<note><rest/><duration>' + measureDuration + '</duration><type>whole</type></note>'}
+    </measure>`;
+  }).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="3.1">
+  <part-list>
+    <score-part id="P1">
+      <part-name>${track.name || 'Guitar'}</part-name>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    ${measuresXml}
   </part>
 </score-partwise>`;
 };
