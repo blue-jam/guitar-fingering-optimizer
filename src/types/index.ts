@@ -24,6 +24,14 @@ export interface MidiTrack {
   noteCount: number;
 }
 
+export interface MidiMetadata {
+  bpm: number;
+  timeSignature: {
+    numerator: number;
+    denominator: number;
+  };
+}
+
 export interface Note {
   pitch: number; // MIDI note number
   time: number; // Start time in seconds

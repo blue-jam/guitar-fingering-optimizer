@@ -1,5 +1,6 @@
 import { Midi } from '@tonejs/midi';
 import type { OptimizedNote } from '../types';
+import { getMidiMetadata } from './midiParser';
 
 /**
  * Convert MIDI to MusicXML format with optional fingering annotations
@@ -10,6 +11,8 @@ export const midiToMusicXml = (
   trackIndex: number,
   optimizedNotes?: OptimizedNote[]
 ): string => {
+  // Extract metadata from MIDI
+  const metadata = getMidiMetadata(midi);
   const track = midi.tracks[trackIndex];
   if (!track || track.notes.length === 0) {
     return createEmptyMusicXml();
@@ -17,7 +20,8 @@ export const midiToMusicXml = (
 
   const notes = track.notes;
   const divisions = 480; // Standard MIDI divisions per quarter note
-  const measureDuration = divisions * 4; // 4 beats per measure in 4/4 time
+  const { bpm, timeSignature } = metadata;
+  const measureDuration = divisions * timeSignature.numerator; // Beats per measure based on time signature
 
   // Group notes into measures based on their timing
   interface MeasureNote {
@@ -30,7 +34,7 @@ export const midiToMusicXml = (
   const processedNotes: MeasureNote[] = notes.map((note) => ({
     pitch: noteToPitch(note.midi),
     duration: Math.round(note.duration * divisions * 2),
-    noteType: getNoteType(note.duration),
+    noteType: getNoteType(note.duration, bpm),
     time: note.time * divisions * 2,
   }));
 
@@ -152,8 +156,8 @@ export const midiToMusicXml = (
           <fifths>0</fifths>
         </key>
         <time>
-          <beats>4</beats>
-          <beat-type>4</beat-type>
+          <beats>${timeSignature.numerator}</beats>
+          <beat-type>${timeSignature.denominator}</beat-type>
         </time>
         <staves>2</staves>
         <clef number="1">
@@ -167,7 +171,8 @@ export const midiToMusicXml = (
         <staff-details number="2">
           <staff-lines>6</staff-lines>
         </staff-details>
-      </attributes>` : ''}
+      </attributes>
+      <sound tempo="${bpm}"/>` : ''}
       <print new-system="yes"/>
       ${
         notesXml ||
@@ -229,13 +234,12 @@ interface Pitch {
 }
 
 /**
- * Determine note type based on duration in seconds
- * Assumes 120 BPM (0.5 seconds per beat) as default
+ * Determine note type based on duration in seconds and BPM
  */
-const getNoteType = (durationSeconds: number): string => {
-  const beatDuration = 0.5; // seconds per quarter note at 120 BPM
+const getNoteType = (durationSeconds: number, bpm: number): string => {
+  const beatDuration = 60 / bpm; // seconds per quarter note based on BPM
   const ratio = durationSeconds / beatDuration;
-  
+
   if (ratio >= 3.5) return 'whole';
   if (ratio >= 1.5) return 'half';
   if (ratio >= 0.75) return 'quarter';
