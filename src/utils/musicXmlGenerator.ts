@@ -1,7 +1,7 @@
 import type { OptimizedNote } from '../types';
 
 /**
- * Add fingering annotations to an existing MusicXML document
+ * Add fingering annotations and TAB staff to an existing MusicXML document
  */
 export const createMusicXmlWithFingering = (
   originalXml: string,
@@ -42,11 +42,75 @@ export const createMusicXmlWithFingering = (
   const secondsPerBeat = 60 / beatsPerMinute;
   const secondsPerDivision = secondsPerBeat / divisions;
 
+  // Determine existing staff count
+  const firstMeasure = doc.querySelector('measure');
+  let existingStaffCount = 1;
+  if (firstMeasure) {
+    const attributesElement = firstMeasure.querySelector('attributes');
+    if (attributesElement) {
+      const stavesElement = attributesElement.querySelector('staves');
+      if (stavesElement && stavesElement.textContent) {
+        existingStaffCount = parseInt(stavesElement.textContent);
+      }
+    }
+  }
+
+  // TAB staff will be added as the next staff
+  const tabStaffNumber = existingStaffCount + 1;
+
+  // Add TAB staff configuration to first measure's attributes
+  if (firstMeasure) {
+    let attributesElement = firstMeasure.querySelector('attributes');
+    if (!attributesElement) {
+      attributesElement = doc.createElement('attributes');
+      const firstChild = firstMeasure.firstChild;
+      if (firstChild) {
+        firstMeasure.insertBefore(attributesElement, firstChild);
+      } else {
+        firstMeasure.appendChild(attributesElement);
+      }
+    }
+
+    // Update staves count
+    let stavesElement = attributesElement.querySelector('staves');
+    if (!stavesElement) {
+      stavesElement = doc.createElement('staves');
+      // Insert staves after divisions
+      const divisionsEl = attributesElement.querySelector('divisions');
+      if (divisionsEl && divisionsEl.nextSibling) {
+        attributesElement.insertBefore(stavesElement, divisionsEl.nextSibling);
+      } else {
+        attributesElement.appendChild(stavesElement);
+      }
+    }
+    stavesElement.textContent = tabStaffNumber.toString();
+
+    // Add clef for TAB staff
+    const clefTab = doc.createElement('clef');
+    clefTab.setAttribute('number', tabStaffNumber.toString());
+    const signTab = doc.createElement('sign');
+    signTab.textContent = 'TAB';
+    const lineTab = doc.createElement('line');
+    lineTab.textContent = '5';
+    clefTab.appendChild(signTab);
+    clefTab.appendChild(lineTab);
+    attributesElement.appendChild(clefTab);
+
+    // Add staff-details for TAB staff
+    const staffDetails = doc.createElement('staff-details');
+    staffDetails.setAttribute('number', tabStaffNumber.toString());
+    const staffLines = doc.createElement('staff-lines');
+    staffLines.textContent = '6';
+    staffDetails.appendChild(staffLines);
+    attributesElement.appendChild(staffDetails);
+  }
+
   // Iterate through all measures
   const measures = doc.querySelectorAll('measure');
   measures.forEach((measure) => {
-    // Iterate through all notes in the measure
-    const noteElements = measure.querySelectorAll('note');
+    // Get all existing notes in the measure
+    const noteElements = Array.from(measure.querySelectorAll('note'));
+    const tabNotesToAdd: Element[] = [];
 
     noteElements.forEach((noteElement) => {
       // Skip rest notes
@@ -74,29 +138,12 @@ export const createMusicXmlWithFingering = (
       const fingering = fingeringMap.get(timeKey);
 
       if (fingering) {
-        // Add fingering notation
+        // Add fingering notation to existing note
         let notationsElement = noteElement.querySelector('notations');
         if (!notationsElement) {
           notationsElement = doc.createElement('notations');
           noteElement.appendChild(notationsElement);
         }
-
-        // Add technical notation for TAB (string and fret)
-        let technicalElement = notationsElement.querySelector('technical');
-        if (!technicalElement) {
-          technicalElement = doc.createElement('technical');
-          notationsElement.appendChild(technicalElement);
-        }
-
-        // Add string
-        const stringElement = doc.createElement('string');
-        stringElement.textContent = (fingering.string + 1).toString();
-        technicalElement.appendChild(stringElement);
-
-        // Add fret
-        const fretElement = doc.createElement('fret');
-        fretElement.textContent = fingering.fret.toString();
-        technicalElement.appendChild(fretElement);
 
         // Add fingering for standard notation
         let articulationsElement = notationsElement.querySelector('articulations');
@@ -109,12 +156,74 @@ export const createMusicXmlWithFingering = (
         fingeringElement.setAttribute('placement', 'above');
         fingeringElement.textContent = fingering.finger === 0 ? 'T' : fingering.finger.toString();
         articulationsElement.appendChild(fingeringElement);
+
+        // Create TAB note for the TAB staff - clone the original note
+        const tabNote = noteElement.cloneNode(true) as Element;
+
+        // Get or create voice element for TAB note
+        let tabVoice = tabNote.querySelector('voice');
+        if (!tabVoice) {
+          tabVoice = doc.createElement('voice');
+          tabNote.appendChild(tabVoice);
+        }
+        tabVoice.textContent = tabStaffNumber.toString();
+
+        // Set staff number to TAB staff
+        let tabStaff = tabNote.querySelector('staff');
+        if (!tabStaff) {
+          tabStaff = doc.createElement('staff');
+          tabNote.appendChild(tabStaff);
+        }
+        tabStaff.textContent = tabStaffNumber.toString();
+
+        // Update notations for TAB note
+        let tabNotations = tabNote.querySelector('notations');
+        if (!tabNotations) {
+          tabNotations = doc.createElement('notations');
+          tabNote.appendChild(tabNotations);
+        }
+
+        // Remove articulations (fingering) from TAB note
+        const tabArticulations = tabNotations.querySelector('articulations');
+        if (tabArticulations) {
+          tabNotations.removeChild(tabArticulations);
+        }
+
+        // Add or update technical notation for TAB (string and fret)
+        let technicalElement = tabNotations.querySelector('technical');
+        if (!technicalElement) {
+          technicalElement = doc.createElement('technical');
+          tabNotations.appendChild(technicalElement);
+        }
+
+        // Clear existing technical elements
+        while (technicalElement.firstChild) {
+          technicalElement.removeChild(technicalElement.firstChild);
+        }
+
+        // Add string
+        const stringElement = doc.createElement('string');
+        stringElement.textContent = (fingering.string + 1).toString();
+        technicalElement.appendChild(stringElement);
+
+        // Add fret
+        const fretElement = doc.createElement('fret');
+        fretElement.textContent = fingering.fret.toString();
+        technicalElement.appendChild(fretElement);
+
+        // Add the TAB note to the list
+        tabNotesToAdd.push(tabNote);
       }
 
       // Update time
       if (!isChord) {
         currentTime += duration * secondsPerDivision;
       }
+    });
+
+    // Add all TAB notes to the measure
+    tabNotesToAdd.forEach((tabNote) => {
+      measure.appendChild(tabNote);
     });
   });
 
