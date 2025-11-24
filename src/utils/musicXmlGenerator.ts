@@ -110,7 +110,8 @@ export const createMusicXmlWithFingering = (
   measures.forEach((measure) => {
     // Get all existing notes in the measure
     const noteElements = Array.from(measure.querySelectorAll('note'));
-    const notePairs: Array<{ original: Element; tab?: Element }> = [];
+    const tabNotesWithDuration: Array<{ tabNote: Element; duration: number }> = [];
+    let measureTotalDuration = 0;
 
     noteElements.forEach((noteElement) => {
       // Skip rest notes
@@ -229,30 +230,30 @@ export const createMusicXmlWithFingering = (
         fretElement.textContent = fingering.fret.toString();
         technicalElement.appendChild(fretElement);
 
-        // Store the pair for later insertion
-        notePairs.push({ original: noteElement, tab: tabNote });
-      } else {
-        notePairs.push({ original: noteElement });
+        // Store the TAB note with its duration for later insertion
+        tabNotesWithDuration.push({ tabNote, duration });
       }
 
-      // Update time
+      // Update time and measure duration
       if (!isChord) {
         currentTime += duration * secondsPerDivision;
+        measureTotalDuration += duration;
       }
     });
 
-    // Insert TAB notes right after their corresponding standard notes
-    notePairs.reverse().forEach(({ original, tab }) => {
-      if (tab) {
-        // Insert TAB note right after the original note
-        const nextSibling = original.nextSibling;
-        if (nextSibling) {
-          measure.insertBefore(tab, nextSibling);
-        } else {
-          measure.appendChild(tab);
-        }
-      }
-    });
+    // Add backup element to return to the start of the measure
+    if (tabNotesWithDuration.length > 0 && measureTotalDuration > 0) {
+      const backupElement = doc.createElement('backup');
+      const backupDuration = doc.createElement('duration');
+      backupDuration.textContent = measureTotalDuration.toString();
+      backupElement.appendChild(backupDuration);
+      measure.appendChild(backupElement);
+
+      // Add all TAB notes after the backup
+      tabNotesWithDuration.forEach(({ tabNote }) => {
+        measure.appendChild(tabNote);
+      });
+    }
   });
 
   // Serialize back to string
