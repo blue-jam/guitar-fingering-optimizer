@@ -110,7 +110,7 @@ export const createMusicXmlWithFingering = (
   measures.forEach((measure) => {
     // Get all existing notes in the measure
     const noteElements = Array.from(measure.querySelectorAll('note'));
-    const tabNotesToAdd: Element[] = [];
+    const notePairs: Array<{ original: Element; tab?: Element }> = [];
 
     noteElements.forEach((noteElement) => {
       // Skip rest notes
@@ -176,6 +176,18 @@ export const createMusicXmlWithFingering = (
         }
         tabStaff.textContent = tabStaffNumber.toString();
 
+        // Remove stem from TAB note
+        const tabStem = tabNote.querySelector('stem');
+        if (tabStem) {
+          tabNote.removeChild(tabStem);
+        }
+
+        // Remove beam from TAB note
+        const tabBeams = tabNote.querySelectorAll('beam');
+        tabBeams.forEach((beam) => {
+          tabNote.removeChild(beam);
+        });
+
         // Update notations for TAB note
         let tabNotations = tabNote.querySelector('notations');
         if (!tabNotations) {
@@ -188,6 +200,12 @@ export const createMusicXmlWithFingering = (
         if (tabArticulations) {
           tabNotations.removeChild(tabArticulations);
         }
+
+        // Remove tuplet from TAB note
+        const tabTuplets = tabNotations.querySelectorAll('tuplet');
+        tabTuplets.forEach((tuplet) => {
+          tabNotations.removeChild(tuplet);
+        });
 
         // Add or update technical notation for TAB (string and fret)
         let technicalElement = tabNotations.querySelector('technical');
@@ -211,8 +229,10 @@ export const createMusicXmlWithFingering = (
         fretElement.textContent = fingering.fret.toString();
         technicalElement.appendChild(fretElement);
 
-        // Add the TAB note to the list
-        tabNotesToAdd.push(tabNote);
+        // Store the pair for later insertion
+        notePairs.push({ original: noteElement, tab: tabNote });
+      } else {
+        notePairs.push({ original: noteElement });
       }
 
       // Update time
@@ -221,9 +241,17 @@ export const createMusicXmlWithFingering = (
       }
     });
 
-    // Add all TAB notes to the measure
-    tabNotesToAdd.forEach((tabNote) => {
-      measure.appendChild(tabNote);
+    // Insert TAB notes right after their corresponding standard notes
+    notePairs.reverse().forEach(({ original, tab }) => {
+      if (tab) {
+        // Insert TAB note right after the original note
+        const nextSibling = original.nextSibling;
+        if (nextSibling) {
+          measure.insertBefore(tab, nextSibling);
+        } else {
+          measure.appendChild(tab);
+        }
+      }
     });
   });
 
