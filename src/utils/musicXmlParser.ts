@@ -115,15 +115,26 @@ const extractNotes = (doc: Document, metadata: MusicXmlMetadata): Note[] => {
     const noteElements = measure.querySelectorAll('note');
 
     noteElements.forEach((noteElement) => {
-      // Skip rest notes
+      // Extract duration
+      const durationElement = noteElement.querySelector('duration');
+      const duration = durationElement ? parseInt(durationElement.textContent || '0') : 0;
+
+      // Check if this is a chord (has <chord> element)
+      const isChord = noteElement.querySelector('chord') !== null;
+
+      // Check if this is a rest note
       const restElement = noteElement.querySelector('rest');
       if (restElement) {
+        // Add rest note
+        notes.push({
+          pitch: 0, // Use 0 for rests
+          time: currentTime * secondsPerDivision,
+          duration: duration * secondsPerDivision,
+          isRest: true,
+        });
+
         // Update time for rests
-        const durationElement = noteElement.querySelector('duration');
-        if (durationElement) {
-          const duration = parseInt(durationElement.textContent || '0');
-          currentTime += duration;
-        }
+        currentTime += duration;
         return;
       }
 
@@ -143,13 +154,6 @@ const extractNotes = (doc: Document, metadata: MusicXmlMetadata): Note[] => {
 
       // Convert to MIDI note number
       const midiNote = pitchToMidi(step, octave, alter);
-
-      // Extract duration
-      const durationElement = noteElement.querySelector('duration');
-      const duration = durationElement ? parseInt(durationElement.textContent || '0') : 0;
-
-      // Check if this is a chord (has <chord> element)
-      const isChord = noteElement.querySelector('chord') !== null;
 
       // If it's a chord, don't advance the time
       if (!isChord) {

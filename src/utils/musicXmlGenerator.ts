@@ -114,18 +114,6 @@ export const createMusicXmlWithFingering = (
     let measureTotalDuration = 0;
 
     noteElements.forEach((noteElement) => {
-      // Skip rest notes
-      const restElement = noteElement.querySelector('rest');
-      if (restElement) {
-        // Update time for rests
-        const durationElement = noteElement.querySelector('duration');
-        if (durationElement) {
-          const duration = parseInt(durationElement.textContent || '0');
-          currentTime += duration * secondsPerDivision;
-        }
-        return;
-      }
-
       // Extract duration
       const durationElement = noteElement.querySelector('duration');
       const duration = durationElement ? parseInt(durationElement.textContent || '0') : 0;
@@ -136,6 +124,38 @@ export const createMusicXmlWithFingering = (
       // Calculate note time
       const noteTime = isChord ? currentTime - (duration * secondsPerDivision) : currentTime;
       const timeKey = Math.round(noteTime * 1000);
+
+      // Check if this is a rest note
+      const restElement = noteElement.querySelector('rest');
+      if (restElement) {
+        // Create TAB rest note - clone the original rest
+        const tabRest = noteElement.cloneNode(true) as Element;
+
+        // Get or create voice element for TAB rest
+        let tabVoice = tabRest.querySelector('voice');
+        if (!tabVoice) {
+          tabVoice = doc.createElement('voice');
+          tabRest.appendChild(tabVoice);
+        }
+        tabVoice.textContent = tabStaffNumber.toString();
+
+        // Set staff number to TAB staff
+        let tabStaff = tabRest.querySelector('staff');
+        if (!tabStaff) {
+          tabStaff = doc.createElement('staff');
+          tabRest.appendChild(tabStaff);
+        }
+        tabStaff.textContent = tabStaffNumber.toString();
+
+        // Store the TAB rest with its duration for later insertion
+        tabNotesWithDuration.push({ tabNote: tabRest, duration });
+
+        // Update time for rests
+        currentTime += duration * secondsPerDivision;
+        measureTotalDuration += duration;
+        return;
+      }
+
       const fingering = fingeringMap.get(timeKey);
 
       if (fingering) {

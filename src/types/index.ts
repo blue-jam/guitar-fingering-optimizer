@@ -33,9 +33,10 @@ export interface MidiMetadata {
 }
 
 export interface Note {
-  pitch: number; // MIDI note number
+  pitch: number; // MIDI note number (0 for rests)
   time: number; // Start time in seconds
   duration: number; // Duration in seconds
+  isRest?: boolean; // True if this is a rest
 }
 
 export interface FingeringPosition {

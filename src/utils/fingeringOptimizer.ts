@@ -16,6 +16,14 @@ export const optimizeFingering = (
   config: GuitarConfig
 ): OptimizedNote[] => {
   return notes.map(note => {
+    // Skip fingering assignment for rests
+    if (note.isRest) {
+      return {
+        ...note,
+        fingering: undefined,
+      };
+    }
+
     const fingering = findBasicFingering(note.pitch, config);
     return {
       ...note,
