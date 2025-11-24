@@ -1,54 +1,47 @@
 import { useState } from 'react';
-import { Midi } from '@tonejs/midi';
 import './App.css';
 import GuitarConfigComponent from './components/GuitarConfig';
-import MidiUploader from './components/MidiUploader';
+import MusicXmlUploader from './components/MidiUploader';
 import SheetMusicDisplay from './components/SheetMusicDisplay';
 import ConfigExporter from './components/ConfigExporter';
-import type { OptimizationSettings, OptimizedNote } from './types';
+import type { OptimizationSettings, OptimizedNote, Note } from './types';
 import { createDefaultGuitarConfig } from './utils/defaultConfig';
-import { getTrackNotes } from './utils/midiParser';
 import { optimizeFingering } from './utils/fingeringOptimizer';
-import { midiToMusicXml } from './utils/midiToMusicXml';
+import type { ParsedMusicXml } from './utils/musicXmlParser';
+import { createMusicXmlWithFingering } from './utils/musicXmlGenerator';
 
 function App() {
   const [settings, setSettings] = useState<OptimizationSettings>({
     guitarConfig: createDefaultGuitarConfig(),
   });
-  
-  const [midi, setMidi] = useState<Midi | null>(null);
-  const [selectedTrack, setSelectedTrack] = useState<number>(0);
+
+  const [parsedMusicXml, setParsedMusicXml] = useState<ParsedMusicXml | null>(null);
   const [musicXml, setMusicXml] = useState<string | null>(null);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [optimizedNotes, setOptimizedNotes] = useState<OptimizedNote[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
 
-  const handleMidiLoaded = (loadedMidi: Midi, trackIndex: number) => {
-    setMidi(loadedMidi);
-    setSelectedTrack(trackIndex);
-    
-    // Convert MIDI to MusicXML for display
-    const xml = midiToMusicXml(loadedMidi, trackIndex);
-    setMusicXml(xml);
-    
+  const handleMusicXmlLoaded = (loadedMusicXml: ParsedMusicXml) => {
+    setParsedMusicXml(loadedMusicXml);
+    setMusicXml(loadedMusicXml.rawXml);
+    setNotes(loadedMusicXml.notes);
+
     // Clear previous optimization
     setOptimizedNotes([]);
   };
 
   const handleOptimize = () => {
-    if (!midi) return;
+    if (!parsedMusicXml || notes.length === 0) return;
 
     setIsOptimizing(true);
-
-    // Get notes from selected track
-    const notes = getTrackNotes(midi, selectedTrack);
 
     // Perform optimization (runs in the frontend)
     setTimeout(() => {
       const optimized = optimizeFingering(notes, settings.guitarConfig);
       setOptimizedNotes(optimized);
 
-      // Regenerate MusicXML with fingering annotations
-      const xmlWithFingering = midiToMusicXml(midi, selectedTrack, optimized);
+      // Add fingering annotations to MusicXML
+      const xmlWithFingering = createMusicXmlWithFingering(parsedMusicXml.rawXml, optimized);
       setMusicXml(xmlWithFingering);
 
       setIsOptimizing(false);
@@ -63,23 +56,23 @@ function App() {
     <div className="app">
       <header>
         <h1>Guitar Fingering Optimization</h1>
-        <p>Upload MIDI files and optimize guitar fingering positions</p>
+        <p>Upload MusicXML files and optimize guitar fingering positions</p>
       </header>
 
       <main>
         <div className="left-panel">
-          <MidiUploader onMidiLoaded={handleMidiLoaded} />
-          
-          {midi && (
+          <MusicXmlUploader onMusicXmlLoaded={handleMusicXmlLoaded} />
+
+          {parsedMusicXml && (
             <div className="optimization-controls">
-              <button 
-                onClick={handleOptimize} 
+              <button
+                onClick={handleOptimize}
                 disabled={isOptimizing}
                 className="optimize-button"
               >
                 {isOptimizing ? 'Optimizing...' : 'Optimize Fingering'}
               </button>
-              
+
               {optimizedNotes.length > 0 && (
                 <div className="optimization-results">
                   <h3>Optimization Results</h3>
@@ -92,7 +85,7 @@ function App() {
             </div>
           )}
 
-          <ConfigExporter 
+          <ConfigExporter
             settings={settings}
             onImport={handleConfigImport}
           />
