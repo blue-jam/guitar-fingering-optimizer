@@ -128,31 +128,63 @@ export const createMusicXmlWithFingering = (
       // Check if this is a rest note
       const restElement = noteElement.querySelector('rest');
       if (restElement) {
-        // Create TAB rest note - clone the original rest
-        const tabRest = noteElement.cloneNode(true) as Element;
+        // Check if this rest belongs to the first staff only
+        const staffElement = noteElement.querySelector('staff');
+        const staffNumber = staffElement ? parseInt(staffElement.textContent || '1') : 1;
 
-        // Get or create voice element for TAB rest
-        let tabVoice = tabRest.querySelector('voice');
-        if (!tabVoice) {
-          tabVoice = doc.createElement('voice');
-          tabRest.appendChild(tabVoice);
+        // Only process rests from the first staff to avoid duplicates
+        if (staffNumber === 1) {
+          // Create TAB rest note - clone the original rest
+          const tabRest = noteElement.cloneNode(true) as Element;
+
+          // Get or create voice element for TAB rest
+          let tabVoice = tabRest.querySelector('voice');
+          if (!tabVoice) {
+            tabVoice = doc.createElement('voice');
+            tabRest.appendChild(tabVoice);
+          }
+          tabVoice.textContent = tabStaffNumber.toString();
+
+          // Set staff number to TAB staff
+          let tabStaff = tabRest.querySelector('staff');
+          if (!tabStaff) {
+            tabStaff = doc.createElement('staff');
+            tabRest.appendChild(tabStaff);
+          }
+          tabStaff.textContent = tabStaffNumber.toString();
+
+          // Remove stem from TAB rest
+          const tabStem = tabRest.querySelector('stem');
+          if (tabStem) {
+            tabRest.removeChild(tabStem);
+          }
+
+          // Remove beam from TAB rest
+          const tabBeams = tabRest.querySelectorAll('beam');
+          tabBeams.forEach((beam) => {
+            tabRest.removeChild(beam);
+          });
+
+          // Remove or update notations for TAB rest
+          let tabNotations = tabRest.querySelector('notations');
+          if (tabNotations) {
+            // Remove tuplet from TAB rest
+            const tabTuplets = tabNotations.querySelectorAll('tuplet');
+            tabTuplets.forEach((tuplet) => {
+              tabNotations!.removeChild(tuplet);
+            });
+          }
+
+          // Store the TAB rest with its duration for later insertion
+          tabNotesWithDuration.push({ tabNote: tabRest, duration });
+
+          measureTotalDuration += duration;
         }
-        tabVoice.textContent = tabStaffNumber.toString();
 
-        // Set staff number to TAB staff
-        let tabStaff = tabRest.querySelector('staff');
-        if (!tabStaff) {
-          tabStaff = doc.createElement('staff');
-          tabRest.appendChild(tabStaff);
+        // Update time for rests (always, regardless of staff)
+        if (!isChord) {
+          currentTime += duration * secondsPerDivision;
         }
-        tabStaff.textContent = tabStaffNumber.toString();
-
-        // Store the TAB rest with its duration for later insertion
-        tabNotesWithDuration.push({ tabNote: tabRest, duration });
-
-        // Update time for rests
-        currentTime += duration * secondsPerDivision;
-        measureTotalDuration += duration;
         return;
       }
 
