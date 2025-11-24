@@ -85,13 +85,13 @@ export const midiToMusicXml = (
     const measureNumber = index + 1;
     const isFirstMeasure = measureNumber === 1;
 
-    // Generate TAB notation with durations, stems, and beams
+    // Generate pairs of notes: staff 1 (standard) followed immediately by staff 2 (TAB)
     const notesXml = measureNotes.map((note) => {
       const timeKey = Math.round(note.time / (divisions * 2) * 1000);
       const fingering = fingeringMap.get(timeKey);
 
-      if (fingering) {
-        return `
+      // Standard notation (staff 1)
+      const staff1Note = `
       <note>
         <pitch>
           <step>${note.pitch.step}</step>
@@ -99,24 +99,41 @@ export const midiToMusicXml = (
           <octave>${note.pitch.octave}</octave>
         </pitch>
         <duration>${note.duration}</duration>
+        <voice>1</voice>
         <type>${note.noteType}</type>
-        <stem>down</stem>
+        <staff>1</staff>${
+          fingering
+            ? `
+        <notations>
+          <articulations>
+            <fingering placement="above">${fingering.finger === 0 ? 'T' : fingering.finger}</fingering>
+          </articulations>
+        </notations>`
+            : ''
+        }
+      </note>`;
+
+      // TAB notation (staff 2)
+      const staff2Note = fingering
+        ? `
+      <note>
+        <pitch>
+          <step>${note.pitch.step}</step>
+          ${note.pitch.alter !== 0 ? `<alter>${note.pitch.alter}</alter>` : ''}
+          <octave>${note.pitch.octave}</octave>
+        </pitch>
+        <duration>${note.duration}</duration>
+        <voice>2</voice>
+        <type>${note.noteType}</type>
+        <staff>2</staff>
         <notations>
           <technical>
             <string>${fingering.string + 1}</string>
             <fret>${fingering.fret}</fret>
-          </technical>${
-            fingering.finger !== undefined
-              ? `
-          <articulations>
-            <fingering placement="above">${fingering.finger === 0 ? 'T' : fingering.finger}</fingering>
-          </articulations>`
-              : ''
-          }
+          </technical>
         </notations>
-      </note>`;
-      } else {
-        return `
+      </note>`
+        : `
       <note>
         <pitch>
           <step>${note.pitch.step}</step>
@@ -124,10 +141,12 @@ export const midiToMusicXml = (
           <octave>${note.pitch.octave}</octave>
         </pitch>
         <duration>${note.duration}</duration>
+        <voice>2</voice>
         <type>${note.noteType}</type>
-        <stem>down</stem>
+        <staff>2</staff>
       </note>`;
-      }
+
+      return staff1Note + '\n' + staff2Note;
     }).join('\n');
 
     return `
@@ -141,18 +160,25 @@ export const midiToMusicXml = (
           <beats>${timeSignature.numerator}</beats>
           <beat-type>${timeSignature.denominator}</beat-type>
         </time>
-        <clef>
+        <staves>2</staves>
+        <clef number="1">
+          <sign>G</sign>
+          <line>2</line>
+        </clef>
+        <clef number="2">
           <sign>TAB</sign>
           <line>5</line>
         </clef>
-        <staff-details>
+        <staff-details number="2">
           <staff-lines>6</staff-lines>
         </staff-details>
       </attributes>
       <sound tempo="${bpm}"/>` : ''}
+      <print new-system="yes"/>
       ${
         notesXml ||
-        `<note><rest/><duration>${measureDuration}</duration><type>whole</type></note>`
+        `<note><rest/><duration>${measureDuration}</duration><type>whole</type><staff>1</staff></note>
+      <note><rest/><duration>${measureDuration}</duration><type>whole</type><staff>2</staff></note>`
       }
     </measure>`;
   }).join('\n');
