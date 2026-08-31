@@ -197,7 +197,15 @@ export const createMusicXmlWithFingering = (
           const chordEl = doc.createElement('chord');
           tabRest.insertBefore(chordEl, tabRest.firstChild);
 
-          // Keep voice=1 (same voice as standard staff)
+          // Use voice=2 for TAB rest (separate VoiceEntry from standard)
+          let tabRestVoiceEl = tabRest.querySelector('voice');
+          if (tabRestVoiceEl) {
+            tabRestVoiceEl.textContent = '2';
+          } else {
+            tabRestVoiceEl = doc.createElement('voice');
+            tabRestVoiceEl.textContent = '2';
+            tabRest.appendChild(tabRestVoiceEl);
+          }
           // Set staff number to TAB staff
           let tabStaff = tabRest.querySelector('staff');
           if (!tabStaff) {
@@ -265,7 +273,17 @@ export const createMusicXmlWithFingering = (
         const chordEl = doc.createElement('chord');
         tabNote.insertBefore(chordEl, tabNote.firstChild);
 
-        // Keep voice=1 (same voice as standard staff)
+        // Use voice=2 so TabNote goes into a separate VoiceEntry (VE2) from the standard
+        // Note (VE1). This is critical: checkForStaffEntryLink is triggered by <chord/> +
+        // staff change, and pushes only VE2 (TabNote) to SSE[1] (TAB staff entry).
+        let tabVoiceEl = tabNote.querySelector('voice');
+        if (tabVoiceEl) {
+          tabVoiceEl.textContent = '2';
+        } else {
+          tabVoiceEl = doc.createElement('voice');
+          tabVoiceEl.textContent = '2';
+          tabNote.appendChild(tabVoiceEl);
+        }
         // Set staff number to TAB staff
         let tabStaff = tabNote.querySelector('staff');
         if (!tabStaff) {
