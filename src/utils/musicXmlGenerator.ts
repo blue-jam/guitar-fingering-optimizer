@@ -197,13 +197,12 @@ export const createMusicXmlWithFingering = (
           const chordEl = doc.createElement('chord');
           tabRest.insertBefore(chordEl, tabRest.firstChild);
 
-          // Use voice=2 for TAB rest (separate VoiceEntry from standard)
+          // Keep voice=1 for TAB rest so OSMD's tabStaffEntry linking mechanism fires
+          // (checkForStaffEntryLink triggers on same-voice chord notes with different staff)
           let tabRestVoiceEl = tabRest.querySelector('voice');
-          if (tabRestVoiceEl) {
-            tabRestVoiceEl.textContent = '2';
-          } else {
+          if (!tabRestVoiceEl) {
             tabRestVoiceEl = doc.createElement('voice');
-            tabRestVoiceEl.textContent = '2';
+            tabRestVoiceEl.textContent = '1';
             tabRest.appendChild(tabRestVoiceEl);
           }
           // Set staff number to TAB staff
@@ -273,15 +272,15 @@ export const createMusicXmlWithFingering = (
         const chordEl = doc.createElement('chord');
         tabNote.insertBefore(chordEl, tabNote.firstChild);
 
-        // Use voice=2 so TabNote goes into a separate VoiceEntry (VE2) from the standard
-        // Note (VE1). This is critical: checkForStaffEntryLink is triggered by <chord/> +
-        // staff change, and pushes only VE2 (TabNote) to SSE[1] (TAB staff entry).
+        // Keep voice=1 for TAB note so OSMD's tabStaffEntry linking mechanism fires.
+        // OSMD's checkForStaffEntryLink is triggered by a <chord/> note that has a different
+        // staff from the previous note with the same voice. With voice=1 + staff=2 + <chord/>,
+        // OSMD creates a StaffEntryLink and calls tabStaffEntry.findOrCreateGraphicalVoiceEntry,
+        // which causes CreateTabNote to receive a TabNote instead of a regular Note.
         let tabVoiceEl = tabNote.querySelector('voice');
-        if (tabVoiceEl) {
-          tabVoiceEl.textContent = '2';
-        } else {
+        if (!tabVoiceEl) {
           tabVoiceEl = doc.createElement('voice');
-          tabVoiceEl.textContent = '2';
+          tabVoiceEl.textContent = '1';
           tabNote.appendChild(tabVoiceEl);
         }
         // Set staff number to TAB staff
