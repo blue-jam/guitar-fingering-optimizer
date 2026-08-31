@@ -159,10 +159,8 @@ export const createMusicXmlWithFingering = (
   // Iterate through all measures
   const measures = doc.querySelectorAll('measure');
   measures.forEach((measure) => {
-    // Get all existing notes in the measure
+    // Get all existing notes in the measure (snapshot before we insert new nodes)
     const noteElements = Array.from(measure.querySelectorAll('note'));
-    const tabNotesWithDuration: Array<{ tabNote: Element; duration: number }> = [];
-    let measureTotalDuration = 0;
 
     noteElements.forEach((noteElement) => {
       // Extract duration
@@ -179,7 +177,7 @@ export const createMusicXmlWithFingering = (
       // Check if this is a rest note
       const restElement = noteElement.querySelector('rest');
       if (restElement) {
-        // Ensure original rest has staff number 1 (important for single-staff scores)
+        // Ensure original rest has staff number 1
         let staffElement = noteElement.querySelector('staff');
         if (!staffElement) {
           staffElement = doc.createElement('staff');
@@ -192,17 +190,14 @@ export const createMusicXmlWithFingering = (
 
         // Only process rests from the first staff to avoid duplicates
         if (staffNumber === 1) {
-          // Create TAB rest note - clone the original rest
+          // Create TAB rest as a chord note immediately after the original rest
           const tabRest = noteElement.cloneNode(true) as Element;
 
-          // Get or create voice element for TAB rest
-          let tabVoice = tabRest.querySelector('voice');
-          if (!tabVoice) {
-            tabVoice = doc.createElement('voice');
-            tabRest.appendChild(tabVoice);
-          }
-          tabVoice.textContent = tabStaffNumber.toString();
+          // Add <chord/> so it shares the same time position
+          const chordEl = doc.createElement('chord');
+          tabRest.insertBefore(chordEl, tabRest.firstChild);
 
+          // Keep voice=1 (same voice as standard staff)
           // Set staff number to TAB staff
           let tabStaff = tabRest.querySelector('staff');
           if (!tabStaff) {
@@ -211,50 +206,34 @@ export const createMusicXmlWithFingering = (
           }
           tabStaff.textContent = tabStaffNumber.toString();
 
-          // Remove stem from TAB rest
+          // Remove stem/beam
           const tabStem = tabRest.querySelector('stem');
-          if (tabStem) {
-            tabRest.removeChild(tabStem);
-          }
+          if (tabStem) tabRest.removeChild(tabStem);
+          tabRest.querySelectorAll('beam').forEach((b) => tabRest.removeChild(b));
 
-          // Remove beam from TAB rest
-          const tabBeams = tabRest.querySelectorAll('beam');
-          tabBeams.forEach((beam) => {
-            tabRest.removeChild(beam);
-          });
-
-          // Remove or update notations for TAB rest
+          // Remove tuplet from notations
           const tabNotations = tabRest.querySelector('notations');
           if (tabNotations) {
-            // Remove tuplet from TAB rest
-            const tabTuplets = tabNotations.querySelectorAll('tuplet');
-            tabTuplets.forEach((tuplet) => {
-              tabNotations!.removeChild(tuplet);
-            });
+            tabNotations.querySelectorAll('tuplet').forEach((t) => tabNotations.removeChild(t));
           }
 
-          // Store the TAB rest with its duration for later insertion
-          tabNotesWithDuration.push({ tabNote: tabRest, duration });
-
-          measureTotalDuration += duration;
+          noteElement.after(tabRest);
         }
 
-        // Update time for rests (always, regardless of staff)
+        // Update time for rests
         if (!isChord) {
           currentTime += duration * secondsPerDivision;
         }
         return;
       }
 
-      // Ensure original note has staff number 1 (important for single-staff scores)
-      // This prevents staff ordering issues when adding TAB staff
+      // Ensure original note has staff number 1
       let originalStaff = noteElement.querySelector('staff');
       if (!originalStaff) {
         originalStaff = doc.createElement('staff');
         noteElement.appendChild(originalStaff);
         originalStaff.textContent = '1';
       } else if (!originalStaff.textContent || originalStaff.textContent === '') {
-        // If staff element exists but has no content, set it to 1
         originalStaff.textContent = '1';
       }
 
@@ -268,7 +247,6 @@ export const createMusicXmlWithFingering = (
           noteElement.appendChild(notationsElement);
         }
 
-        // Add fingering for standard notation
         let articulationsElement = notationsElement.querySelector('articulations');
         if (!articulationsElement) {
           articulationsElement = doc.createElement('articulations');
@@ -280,17 +258,14 @@ export const createMusicXmlWithFingering = (
         fingeringElement.textContent = fingering.finger === 0 ? 'T' : fingering.finger.toString();
         articulationsElement.appendChild(fingeringElement);
 
-        // Create TAB note for the TAB staff - clone the original note
+        // Create TAB note as a chord note immediately after the standard note
         const tabNote = noteElement.cloneNode(true) as Element;
 
-        // Get or create voice element for TAB note
-        let tabVoice = tabNote.querySelector('voice');
-        if (!tabVoice) {
-          tabVoice = doc.createElement('voice');
-          tabNote.appendChild(tabVoice);
-        }
-        tabVoice.textContent = tabStaffNumber.toString();
+        // Add <chord/> as first child so it shares the same time position
+        const chordEl = doc.createElement('chord');
+        tabNote.insertBefore(chordEl, tabNote.firstChild);
 
+        // Keep voice=1 (same voice as standard staff)
         // Set staff number to TAB staff
         let tabStaff = tabNote.querySelector('staff');
         if (!tabStaff) {
@@ -299,17 +274,10 @@ export const createMusicXmlWithFingering = (
         }
         tabStaff.textContent = tabStaffNumber.toString();
 
-        // Remove stem from TAB note
+        // Remove stem/beam
         const tabStem = tabNote.querySelector('stem');
-        if (tabStem) {
-          tabNote.removeChild(tabStem);
-        }
-
-        // Remove beam from TAB note
-        const tabBeams = tabNote.querySelectorAll('beam');
-        tabBeams.forEach((beam) => {
-          tabNote.removeChild(beam);
-        });
+        if (tabStem) tabNote.removeChild(tabStem);
+        tabNote.querySelectorAll('beam').forEach((b) => tabNote.removeChild(b));
 
         // Update notations for TAB note
         let tabNotations = tabNote.querySelector('notations');
@@ -320,24 +288,17 @@ export const createMusicXmlWithFingering = (
 
         // Remove articulations (fingering) from TAB note
         const tabArticulations = tabNotations.querySelector('articulations');
-        if (tabArticulations) {
-          tabNotations.removeChild(tabArticulations);
-        }
+        if (tabArticulations) tabNotations.removeChild(tabArticulations);
 
         // Remove tuplet from TAB note
-        const tabTuplets = tabNotations.querySelectorAll('tuplet');
-        tabTuplets.forEach((tuplet) => {
-          tabNotations.removeChild(tuplet);
-        });
+        tabNotations.querySelectorAll('tuplet').forEach((t) => tabNotations!.removeChild(t));
 
-        // Add or update technical notation for TAB (string and fret)
+        // Add technical notation for TAB (string and fret)
         let technicalElement = tabNotations.querySelector('technical');
         if (!technicalElement) {
           technicalElement = doc.createElement('technical');
           tabNotations.appendChild(technicalElement);
         }
-
-        // Clear existing technical elements
         while (technicalElement.firstChild) {
           technicalElement.removeChild(technicalElement.firstChild);
         }
@@ -347,43 +308,19 @@ export const createMusicXmlWithFingering = (
         stringElement.textContent = (config.strings.length - fingering.string).toString();
         technicalElement.appendChild(stringElement);
 
-        // Add fret
         const fretElement = doc.createElement('fret');
         fretElement.textContent = fingering.fret.toString();
         technicalElement.appendChild(fretElement);
 
-        // Store the TAB note with its duration for later insertion
-        tabNotesWithDuration.push({ tabNote, duration });
-      } else if (!isChord) {
-        // For non-chord non-rest notes without fingering, add a forward element to keep TAB in
-        // sync. Rests are handled above and return early, so this branch only handles pitched notes.
-        const forwardElement = doc.createElement('forward');
-        const forwardDuration = doc.createElement('duration');
-        forwardDuration.textContent = duration.toString();
-        forwardElement.appendChild(forwardDuration);
-        tabNotesWithDuration.push({ tabNote: forwardElement, duration });
+        // Insert TAB note immediately after the standard note
+        noteElement.after(tabNote);
       }
 
-      // Update time and measure duration
+      // Update time
       if (!isChord) {
         currentTime += duration * secondsPerDivision;
-        measureTotalDuration += duration;
       }
     });
-
-    // Add backup element to return to the start of the measure
-    if (tabNotesWithDuration.length > 0 && measureTotalDuration > 0) {
-      const backupElement = doc.createElement('backup');
-      const backupDuration = doc.createElement('duration');
-      backupDuration.textContent = measureTotalDuration.toString();
-      backupElement.appendChild(backupDuration);
-      measure.appendChild(backupElement);
-
-      // Add all TAB notes after the backup
-      tabNotesWithDuration.forEach(({ tabNote }) => {
-        measure.appendChild(tabNote);
-      });
-    }
   });
 
   // Serialize back to string
