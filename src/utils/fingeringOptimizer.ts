@@ -40,22 +40,32 @@ const findBasicFingering = (
   pitch: number,
   config: GuitarConfig
 ): FingeringPosition | undefined => {
-  // Try to find a position on any string
+  // Search from the highest string (lowest index in standard order = thinnest string)
+  // to find the position with the lowest fret number, preferring open strings and low frets.
+  // Strings are ordered from lowest pitch (index 0) to highest pitch (last index).
+  let best: { stringIndex: number; fret: number } | undefined;
+
   for (let stringIndex = 0; stringIndex < config.strings.length; stringIndex++) {
     const string = config.strings[stringIndex];
     const fret = pitch - string.tuning;
-    
+
     // Check if this fret is within range
     if (fret >= 0 && fret <= config.fretCount) {
-      // Assign a finger (simplified logic)
-      const finger = Math.min(4, Math.max(0, fret % 5));
-      
-      return {
-        string: stringIndex,
-        fret,
-        finger,
-      };
+      // Prefer the string with the lowest fret number (easier to play)
+      if (!best || fret < best.fret) {
+        best = { stringIndex, fret };
+      }
     }
+  }
+
+  if (best) {
+    // Assign a finger (simplified logic)
+    const finger = Math.min(4, Math.max(0, best.fret % 5));
+    return {
+      string: best.stringIndex,
+      fret: best.fret,
+      finger,
+    };
   }
   
   return undefined;
