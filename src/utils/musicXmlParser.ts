@@ -111,10 +111,36 @@ const extractNotes = (doc: Document, metadata: MusicXmlMetadata): Note[] => {
   // Iterate through all measures
   const measures = doc.querySelectorAll('measure');
   measures.forEach((measure) => {
-    // Iterate through all notes in the measure
-    const noteElements = measure.querySelectorAll('note');
+    // Iterate through all child elements in the measure (notes, backup, forward)
+    const measureChildren = Array.from(measure.children);
 
-    noteElements.forEach((noteElement) => {
+    measureChildren.forEach((element) => {
+      // Handle backup elements (move time backward)
+      if (element.nodeName === 'backup') {
+        const backupDuration = element.querySelector('duration');
+        if (backupDuration) {
+          const duration = parseInt(backupDuration.textContent || '0');
+          currentTime -= duration;
+        }
+        return;
+      }
+
+      // Handle forward elements (move time forward)
+      if (element.nodeName === 'forward') {
+        const forwardDuration = element.querySelector('duration');
+        if (forwardDuration) {
+          const duration = parseInt(forwardDuration.textContent || '0');
+          currentTime += duration;
+        }
+        return;
+      }
+
+      // Only process note elements
+      if (element.nodeName !== 'note') {
+        return;
+      }
+
+      const noteElement = element;
       // Extract duration
       const durationElement = noteElement.querySelector('duration');
       const duration = durationElement ? parseInt(durationElement.textContent || '0') : 0;
@@ -125,16 +151,26 @@ const extractNotes = (doc: Document, metadata: MusicXmlMetadata): Note[] => {
       // Check if this is a rest note
       const restElement = noteElement.querySelector('rest');
       if (restElement) {
-        // Add rest note
-        notes.push({
-          pitch: 0, // Use 0 for rests
-          time: currentTime * secondsPerDivision,
-          duration: duration * secondsPerDivision,
-          isRest: true,
-        });
+        // Check if this rest belongs to the first staff only
+        // In multi-staff measures (e.g., treble + bass clef), each staff has alignment rests
+        // We only want to include rests from the first staff to avoid duplicates
+        const staffElement = noteElement.querySelector('staff');
+        const staffNumber = staffElement ? parseInt(staffElement.textContent || '1') : 1;
 
-        // Update time for rests
-        currentTime += duration;
+        if (staffNumber === 1) {
+          // Add rest note
+          notes.push({
+            pitch: 0, // Use 0 for rests
+            time: currentTime * secondsPerDivision,
+            duration: duration * secondsPerDivision,
+            isRest: true,
+          });
+        }
+
+        // Update time for rests (always, regardless of staff)
+        if (!isChord) {
+          currentTime += duration;
+        }
         return;
       }
 

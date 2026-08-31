@@ -75,12 +75,23 @@ export const createMusicXmlWithFingering = (
     let stavesElement = attributesElement.querySelector('staves');
     if (!stavesElement) {
       stavesElement = doc.createElement('staves');
-      // Insert staves after divisions
+      // Insert staves after divisions, or at the beginning if no divisions
       const divisionsEl = attributesElement.querySelector('divisions');
-      if (divisionsEl && divisionsEl.nextSibling) {
-        attributesElement.insertBefore(stavesElement, divisionsEl.nextSibling);
+      if (divisionsEl) {
+        // Insert after divisions element
+        if (divisionsEl.nextSibling) {
+          attributesElement.insertBefore(stavesElement, divisionsEl.nextSibling);
+        } else {
+          attributesElement.appendChild(stavesElement);
+        }
       } else {
-        attributesElement.appendChild(stavesElement);
+        // No divisions element, insert at the beginning
+        const firstChild = attributesElement.firstChild;
+        if (firstChild) {
+          attributesElement.insertBefore(stavesElement, firstChild);
+        } else {
+          attributesElement.appendChild(stavesElement);
+        }
       }
     }
     stavesElement.textContent = tabStaffNumber.toString();
@@ -128,9 +139,16 @@ export const createMusicXmlWithFingering = (
       // Check if this is a rest note
       const restElement = noteElement.querySelector('rest');
       if (restElement) {
-        // Check if this rest belongs to the first staff only
-        const staffElement = noteElement.querySelector('staff');
-        const staffNumber = staffElement ? parseInt(staffElement.textContent || '1') : 1;
+        // Ensure original rest has staff number 1 (important for single-staff scores)
+        let staffElement = noteElement.querySelector('staff');
+        if (!staffElement) {
+          staffElement = doc.createElement('staff');
+          noteElement.appendChild(staffElement);
+          staffElement.textContent = '1';
+        } else if (!staffElement.textContent || staffElement.textContent === '') {
+          staffElement.textContent = '1';
+        }
+        const staffNumber = parseInt(staffElement.textContent || '1');
 
         // Only process rests from the first staff to avoid duplicates
         if (staffNumber === 1) {
@@ -186,6 +204,18 @@ export const createMusicXmlWithFingering = (
           currentTime += duration * secondsPerDivision;
         }
         return;
+      }
+
+      // Ensure original note has staff number 1 (important for single-staff scores)
+      // This prevents staff ordering issues when adding TAB staff
+      let originalStaff = noteElement.querySelector('staff');
+      if (!originalStaff) {
+        originalStaff = doc.createElement('staff');
+        noteElement.appendChild(originalStaff);
+        originalStaff.textContent = '1';
+      } else if (!originalStaff.textContent || originalStaff.textContent === '') {
+        // If staff element exists but has no content, set it to 1
+        originalStaff.textContent = '1';
       }
 
       const fingering = fingeringMap.get(timeKey);
