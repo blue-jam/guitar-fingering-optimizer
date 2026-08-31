@@ -184,7 +184,7 @@ export const createMusicXmlWithFingering = (
           });
 
           // Remove or update notations for TAB rest
-          let tabNotations = tabRest.querySelector('notations');
+          const tabNotations = tabRest.querySelector('notations');
           if (tabNotations) {
             // Remove tuplet from TAB rest
             const tabTuplets = tabNotations.querySelectorAll('tuplet');
@@ -314,6 +314,14 @@ export const createMusicXmlWithFingering = (
 
         // Store the TAB note with its duration for later insertion
         tabNotesWithDuration.push({ tabNote, duration });
+      } else if (!isChord) {
+        // For non-chord non-rest notes without fingering, add a forward element to keep TAB in
+        // sync. Rests are handled above and return early, so this branch only handles pitched notes.
+        const forwardElement = doc.createElement('forward');
+        const forwardDuration = doc.createElement('duration');
+        forwardDuration.textContent = duration.toString();
+        forwardElement.appendChild(forwardDuration);
+        tabNotesWithDuration.push({ tabNote: forwardElement, duration });
       }
 
       // Update time and measure duration
