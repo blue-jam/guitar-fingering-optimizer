@@ -1,11 +1,23 @@
-import type { OptimizedNote } from '../types';
+import type { GuitarConfig, OptimizedNote } from '../types';
+
+// Convert MIDI note number to step and octave for MusicXML
+const midiToStepOctave = (midi: number): { step: string; octave: number; alter: number } => {
+  const noteNames = ['C', 'D', 'D', 'E', 'E', 'F', 'G', 'G', 'A', 'A', 'B', 'B'];
+  const semitones =  [ 0,  -1,  0,  -1,  0,  0, -1,  0, -1,  0, -1,  0];
+  const noteIndex = midi % 12;
+  const step = noteNames[noteIndex];
+  const octave = Math.floor(midi / 12) - 1;
+  const alter = semitones[noteIndex];
+  return { step, octave, alter };
+};
 
 /**
  * Add fingering annotations and TAB staff to an existing MusicXML document
  */
 export const createMusicXmlWithFingering = (
   originalXml: string,
-  optimizedNotes: OptimizedNote[]
+  optimizedNotes: OptimizedNote[],
+  config: GuitarConfig
 ): string => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(originalXml, 'text/xml');
@@ -113,6 +125,34 @@ export const createMusicXmlWithFingering = (
     const staffLines = doc.createElement('staff-lines');
     staffLines.textContent = '6';
     staffDetails.appendChild(staffLines);
+
+    // Add staff-tuning for each string (line 1 = highest string = last in config.strings)
+    const stringCount = config.strings.length;
+    for (let line = 1; line <= stringCount; line++) {
+      const stringIndex = stringCount - line; // line 1 = highest string (last in array)
+      const openStringMidi = config.strings[stringIndex].tuning;
+      const { step, octave, alter } = midiToStepOctave(openStringMidi);
+
+      const staffTuning = doc.createElement('staff-tuning');
+      staffTuning.setAttribute('line', line.toString());
+
+      const tuningStep = doc.createElement('tuning-step');
+      tuningStep.textContent = step;
+      staffTuning.appendChild(tuningStep);
+
+      if (alter !== 0) {
+        const tuningAlter = doc.createElement('tuning-alter');
+        tuningAlter.textContent = alter.toString();
+        staffTuning.appendChild(tuningAlter);
+      }
+
+      const tuningOctave = doc.createElement('tuning-octave');
+      tuningOctave.textContent = octave.toString();
+      staffTuning.appendChild(tuningOctave);
+
+      staffDetails.appendChild(staffTuning);
+    }
+
     attributesElement.appendChild(staffDetails);
   }
 
@@ -302,9 +342,9 @@ export const createMusicXmlWithFingering = (
           technicalElement.removeChild(technicalElement.firstChild);
         }
 
-        // Add string
+        // Add string (MusicXML string 1 = highest pitch = last in config.strings array)
         const stringElement = doc.createElement('string');
-        stringElement.textContent = (fingering.string + 1).toString();
+        stringElement.textContent = (config.strings.length - fingering.string).toString();
         technicalElement.appendChild(stringElement);
 
         // Add fret

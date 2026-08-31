@@ -41,7 +41,7 @@ function App() {
       setOptimizedNotes(optimized);
 
       // Add fingering annotations to MusicXML
-      const xmlWithFingering = createMusicXmlWithFingering(parsedMusicXml.rawXml, optimized);
+      const xmlWithFingering = createMusicXmlWithFingering(parsedMusicXml.rawXml, optimized, settings.guitarConfig);
       setMusicXml(xmlWithFingering);
 
       setIsOptimizing(false);
